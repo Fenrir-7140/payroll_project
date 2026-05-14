@@ -1,0 +1,16 @@
+# ORM pour la base de données
+sqlalchemy
+psycopg2-binary
+
+# User interface
+streamlit
+
+# Framework pour créer l'API (si tu veux montrer ton côté Backend)
+fastapi
+uvicorn[standard]
+
+# Manipulation de données (très utile pour les calculs de paie)
+pandas
+
+# Pour sécuriser les variables d'environnement (optionnel mais pro)
+python-dotenv
