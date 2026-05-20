@@ -36,7 +36,23 @@ class Payslip(Base):
 
     employee = relationship("Employee", back_populates="payslips")
 
+class Client(Base):
+    __tablename__ = 'clients'
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True, nullable=False)
+    company_name = Column(String, nullable=True)
+    email = Column(String, unique=True, index=True)
+
+class PaymentHistory(Base):
+    __tablename__ = 'payment_history'
+
+    id = Column(Integer, primary_key=True, index=True)
+    client_id = Column(Integer, ForeignKey('clients.id'), nullable=False)
+    amount = Column(Float, nullable=False)
+    status = Column(String, default='pending')
+    date_paid = Column(DateTime, default=datetime.now(timezone.utc))
+
 if __name__ == "__main__":
-    print("Creating tables in PostgreSQL...")
+    print("Creating tables")
     Base.metadata.create_all(bind=engine)
-    print("Tables created successfully! Check on pgAdmin.")
