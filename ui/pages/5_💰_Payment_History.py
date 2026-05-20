@@ -2,28 +2,38 @@ import os
 import sys
 import streamlit as st
 import pandas as pd
+from sqlalchemy import select
+from decimal import Decimal
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+sys.path.append(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
 
 from app.database import SessionLocal
 from app.models import Client
 from app.crud import create_payment, get_client_payment_history
 
+
 def run_payment_page():
     st.set_page_config(page_title="Payment History", layout="centered")
+
     st.title("💰 Customer Payment History")
     st.markdown("---")
 
     db = SessionLocal()
     try:
-        clients = db.query(Client).all()
+        clients = list(db.execute(select(Client)).scalars().all())
         client_options = {c.name: c.id for c in clients}
 
         if not client_options:
-            st.warning("⚠️ Add a customers in the 'Customer Management' tab.'.")
+            st.warning(
+                "⚠️ Please add a customer in the 'Customer Management' tab first."
+            )
             return
 
-        selected_client_name = st.selectbox("Select a customer", list(client_options.keys()))
+        selected_client_name = st.selectbox(
+            "Select a customer", list(client_options.keys())
+        )
         selected_client_id = client_options[selected_client_name]
 
         st.subheader(f"Record a transaction for {selected_client_name}")
@@ -32,13 +42,20 @@ def run_payment_page():
             status = st.selectbox("Payment status", ["Paid", "Pending", "Cancelled"])
 
             if st.form_submit_button("Confirm transaction"):
-                create_payment(db, client_id=selected_client_id, amount=amount, status=status)
+                amount_decimal = Decimal(str(amount))
+                create_payment(
+                    db,
+                    client_id=selected_client_id,
+                    amount=amount_decimal,
+                    status=status,
+                )
                 st.success("Transaction recorded !")
                 st.rerun()
 
         st.markdown("---")
 
         st.subheader(f"Transaction history - {selected_client_name}")
+
         payments = get_client_payment_history(db, selected_client_id)
 
         if not payments:
@@ -47,18 +64,20 @@ def run_payment_page():
             formatted_payments = [
                 {
                     "Date": p.date_paid.strftime("%d/%m/%Y at %H:%M"),
-                    "Amount": f"${p.amount:,.2f}",
-                    "Status": p.status
+                    "Amount": f"${float(p.amount):,.2f}",
+                    "Status": p.status,
                 }
                 for p in payments
             ]
             df = pd.DataFrame(formatted_payments)
-            st.dataframe(df, width='stretch', hide_index=True)
+
+            st.dataframe(df, width="stretch", hide_index=True)
 
     except Exception as e:
         st.error(f"Payment View Error: {e}")
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     run_payment_page()
