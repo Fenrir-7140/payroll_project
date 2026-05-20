@@ -20,4 +20,5 @@ Moteur de calcul de paie universel avec gestion de règles dynamiques.
    
 
 ## Lancement
-`streamlit run ui/dashboard.py`
+
+`streamlit run ui/Dashboard.py`

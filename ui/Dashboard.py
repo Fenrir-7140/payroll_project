@@ -1,74 +1,111 @@
+import streamlit as st
+import pandas as pd
 import os
 import sys
-import streamlit as st
+from sqlalchemy import select
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database import SessionLocal
-from app.models import Employee, SalaryRule
-from app.engine.calculator import calculate_payroll
-from app.utils.pdf_generator import generate_payslip_pdf
+from app.models import Employee, Client, PaymentHistory, Payslip
 
-def run_payroll_page():
-    st.set_page_config(page_title="Payroll Run", layout="centered")
-    st.title("📊 Calculate & Archive Payroll")
-    st.write("Welcome to the core processing unit of the Universal Payroll Engine.")
+st.set_page_config(page_title="ERP Dashboard", page_icon="📊", layout="wide")
+
+st.title("📊 Enterprise Resource Planning - Dashboard")
+st.markdown("---")
+
+db = SessionLocal()
+
+try:
+    employees = list(db.execute(select(Employee)).scalars().all())
+    clients = list(db.execute(select(Client)).scalars().all())
+    payments = list(db.execute(select(PaymentHistory)).scalars().all())
+    payslips = list(db.execute(select(Payslip)).scalars().all())
+
+    total_employees = len(employees)
+
+    total_revenue = sum(p.amount for p in payments if p.status == "Paid")
+    pending_revenue = sum(p.amount for p in payments if p.status == "Pending")
+    total_payroll = sum(e.base_salary for e in employees)
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric("Total Workforce", f"{total_employees} Staff")
+    with col2:
+        st.metric("Monthly Payroll (Gross)", f"${float(total_payroll):,.2f}")
+    with col3:
+        st.metric("Total Revenue", f"${float(total_revenue):,.2f}", delta="Income")
+    with col4:
+        st.metric(
+            "Pending Invoices",
+            f"${float(pending_revenue):,.2f}",
+            delta="-Unpaid",
+            delta_color="inverse",
+        )
+
     st.markdown("---")
 
-    db = SessionLocal()
-    try:
-        employees = db.query(Employee).all()
-        employee_options = {emp.name: emp.id for emp in employees}
+    left_chart, right_chart = st.columns(2)
 
-        if not employee_options:
-            st.warning("⚠️ No employees available. Please head over to the Employee Directory page to add one.")
-            return
+    with left_chart:
+        st.subheader("👥 Employee Distribution by Title")
+        if employees:
+            df_emp = pd.DataFrame([{"Job": e.job_title} for e in employees])
+            job_counts = df_emp["Job"].value_counts()
+            st.bar_chart(job_counts)
+        else:
+            st.info("No employee data available.")
 
-        selected_emp_name = st.selectbox("Select Employee for Payroll", list(employee_options.keys()))
-        selected_emp_id = employee_options[selected_emp_name]
-        emp_record = db.query(Employee).filter(Employee.id == selected_emp_id).first()
-
-        # Sidebar Rule Monitoring
-        st.sidebar.header("System Active Rules")
-        rules = db.query(SalaryRule).all()
-        for rule in rules:
-            st.sidebar.text(f"• {rule.code}: {rule.rate * 100:.2f}% ({rule.category})")
-
-        col1, col2 = st.columns(2)
-        col1.metric("Job Title", emp_record.job_title)
-        col2.metric("Base Salary", f"${emp_record.base_salary:,.2f}")
-
-        if st.button("🔄 Compute Live Payslip", type="primary"):
-            payslip = calculate_payroll(employee_id=selected_emp_id, db=db)
-            db.add(payslip)
-            db.commit()
-            st.success("🎉 Payslip calculated and stored safely in PostgreSQL!")
-            st.session_state["current_payslip"] = payslip
-            st.session_state["current_emp"] = emp_record
-
-        if "current_payslip" in st.session_state and st.session_state["current_emp"].id == selected_emp_id:
-            p = st.session_state["current_payslip"]
-            e = st.session_state["current_emp"]
-            deds = p.total_gross - p.total_net
-
-            st.markdown("#### Payslip Outcome Details")
-            res_col1, res_col2, res_col3 = st.columns(3)
-            res_col1.metric("Gross", f"${p.total_gross:,.2f}")
-            res_col2.metric("Deductions", f"-${deds:,.2f}")
-            res_col3.metric("Net Salary", f"${p.total_net:,.2f}")
-
-            pdf_data = generate_payslip_pdf(e, p)
-            st.download_button(
-                label="📥 Download Official PDF Payslip",
-                data=bytes(pdf_data),
-                file_name=f"payslip_{e.name.replace(' ', '_').lower()}.pdf",
-                mime="application/pdf"
+    with right_chart:
+        st.subheader("💰 Payment Status Distribution")
+        if payments:
+            df_pay = pd.DataFrame(
+                [{"Status": p.status, "Amount": float(p.amount)} for p in payments]
             )
+            status_summary = df_pay.groupby("Status")["Amount"].sum()
+            st.bar_chart(status_summary)
+        else:
+            st.info("No payment history available.")
 
-    except Exception as e:
-        st.error(f"Payroll View Error: {e}")
-    finally:
-        db.close()
+    st.markdown("---")
 
-if __name__ == "__main__":
-    run_payroll_page()
+    st.subheader("🚀 Recent Activity Summary")
+    tab1, tab2 = st.tabs(["Latest Employees", "Recent Payments"])
+
+    with tab1:
+        emp_data = [
+            {
+                "Employee Name": e.name,
+                "Position": e.job_title,
+                "Base Salary": f"${float(e.base_salary):,.2f}",
+            }
+            for e in employees[-5:]
+        ]
+        st.dataframe(pd.DataFrame(emp_data), width="stretch")
+
+    with tab2:
+        pay_recent = []
+        for p in payments[-5:]:
+            client = db.execute(
+                select(Client).where(Client.id == p.client_id)
+            ).scalar_one_or_none()
+            pay_recent.append(
+                {
+                    "Company Name": (
+                        client.company_name
+                        if client
+                        else f"Unknown (ID: {p.client_id})"
+                    ),
+                    "Amount From Client": f"${float(p.amount):,.2f}",
+                    "Invoice Status": p.status,
+                }
+            )
+        st.dataframe(pd.DataFrame(pay_recent), width="stretch")
+
+except Exception as e:
+    st.error(f"Error loading dashboard: {e}")
+finally:
+    db.close()
+
+st.sidebar.success("Select a module above to manage data.")
