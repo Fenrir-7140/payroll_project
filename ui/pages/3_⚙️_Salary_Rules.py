@@ -3,7 +3,6 @@ import sys
 from decimal import Decimal
 import pandas as pd
 import streamlit as st
-from sqlalchemy import select
 
 from app.exceptions import ValidationError
 
@@ -78,7 +77,6 @@ def run_rules_page():
             else:
                 rules_data = [
                     {
-                        "ID": r.id,
                         "Name": r.name,
                         "Type": (
                             "🍏 Allowance"
@@ -107,7 +105,7 @@ def run_rules_page():
                         f"({target_rule.category})"
                     )
                     updated_rate = st.number_input(
-                        "New Default Rate (decimal)",
+                        "New Default Rate (e.g., 0.05 for 5%)",
                         min_value=0.0,
                         max_value=1.0,
                         value=float(target_rule.rate),

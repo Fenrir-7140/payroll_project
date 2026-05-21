@@ -1,6 +1,5 @@
 import os
 import sys
-from sqlalchemy import select
 import pandas as pd
 import streamlit as st
 
@@ -10,7 +9,6 @@ sys.path.append(
 
 from app.crud import get_all_employees, get_employee_payroll_history
 from app.database import SessionLocal
-from app.models import Employee
 
 
 def run_payroll_history():

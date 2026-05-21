@@ -2,7 +2,6 @@ import os
 import sys
 from decimal import Decimal
 import streamlit as st
-from sqlalchemy import select
 
 sys.path.append(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -15,7 +14,6 @@ from app.crud import (
     update_employee,
 )
 from app.database import SessionLocal
-from app.models import Employee
 
 def run_crud_page():
     st.set_page_config(page_title="Employee Directory", layout="centered")
