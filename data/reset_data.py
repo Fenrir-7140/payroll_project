@@ -22,19 +22,19 @@ def reset_and_seed_database():
             SalaryRule(
                 code="BASIC",
                 name="Base Contract Allowance",
-                rate=Decimal("1.0000"),
+                rate=Decimal("0.1"),
                 category="allowance",
             ),
             SalaryRule(
                 code="HEALTH",
                 name="Health Insurance Deduction",
-                rate=Decimal("0.0450"),
+                rate=Decimal("0.045"),
                 category="deduction",
             ),
             SalaryRule(
                 code="PENSION",
                 name="State Pension Contribution",
-                rate=Decimal("0.0700"),
+                rate=Decimal("0.07"),
                 category="deduction",
             ),
         ]
@@ -45,17 +45,17 @@ def reset_and_seed_database():
             Employee(
                 name="Alice Vance",
                 job_title="Lead Cloud Architect",
-                base_salary=Decimal("8500.00"),
+                base_salary=Decimal("8500"),
             ),
             Employee(
                 name="Bob Miller",
                 job_title="Senior Fullstack Engineer",
-                base_salary=Decimal("6200.00"),
+                base_salary=Decimal("6200"),
             ),
             Employee(
                 name="Charlie Day",
                 job_title="HR Operations Specialist",
-                base_salary=Decimal("4100.00"),
+                base_salary=Decimal("4100"),
             ),
         ]
         db.add_all(employees)
@@ -94,31 +94,31 @@ def reset_and_seed_database():
         payments = [
             PaymentHistory(
                 client_id=acme.id,
-                amount=Decimal("15000.00"),
+                amount=Decimal("15000"),
                 status="Paid",
                 date_paid=datetime.now(timezone.utc) - timedelta(days=30),
             ),
             PaymentHistory(
                 client_id=acme.id,
-                amount=Decimal("4500.00"),
+                amount=Decimal("4500"),
                 status="Pending",
                 date_paid=datetime.now(timezone.utc) - timedelta(days=5),
             ),
             PaymentHistory(
                 client_id=cyberdyne.id,
-                amount=Decimal("28900.00"),
+                amount=Decimal("28900"),
                 status="Paid",
                 date_paid=datetime.now(timezone.utc) - timedelta(days=15),
             ),
             PaymentHistory(
                 client_id=wayne.id,
-                amount=Decimal("75000.00"),
+                amount=Decimal("75000"),
                 status="Paid",
                 date_paid=datetime.now(timezone.utc) - timedelta(days=45),
             ),
             PaymentHistory(
                 client_id=wayne.id,
-                amount=Decimal("12500.00"),
+                amount=Decimal("12500"),
                 status="Cancelled",
                 date_paid=datetime.now(timezone.utc) - timedelta(days=12),
             ),
