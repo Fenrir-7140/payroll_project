@@ -1,14 +1,21 @@
 import os
 import sys
-import streamlit as st
-import pandas as pd
-from sqlalchemy import select
 from decimal import Decimal
+import pandas as pd
+import streamlit as st
+from sqlalchemy import select
+
+from app.exceptions import ValidationError
 
 sys.path.append(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 )
 
+from app.crud import (
+    create_salary_rule,
+    get_all_salary_rules,
+    update_salary_rule_rate,
+)
 from app.database import SessionLocal
 from app.models import SalaryRule
 
@@ -43,24 +50,28 @@ def run_rules_page():
 
                 if st.form_submit_button("Save Rule to System"):
                     if rule_name:
-                        new_rule = SalaryRule(
-                            name=rule_name,
-                            category=rule_category,
-                            rate=Decimal(str(rule_rate)),
-                        )
-                        db.add(new_rule)
-                        db.commit()
-                        st.success(
-                            f"Successfully added rule '{rule_name}' to PostgreSQL!"
-                        )
-                        st.rerun()
+                        try:
+                            create_salary_rule(
+                                db=db,
+                                name=rule_name,
+                                category=rule_category,
+                                rate=Decimal(str(rule_rate)),
+                            )
+                            st.success(
+                                f"Successfully added rule '{rule_name}' to PostgreSQL!"
+                            )
+                            st.rerun()
+                        except ValidationError as error:
+                            st.error(f"🛑 Validation Blocked: {error}")
+                        except Exception as e:
+                            st.error(f"💥 Critical System Error: {e}")
                     else:
                         st.error("Rule Name is mandatory.")
 
         elif action == "View & Edit":
             st.subheader("📝 Existing System Rules")
 
-            rules = list(db.execute(select(SalaryRule)).scalars().all())
+            rules = get_all_salary_rules(db)
 
             if not rules:
                 st.info("No rules found. Please create one or reset data.")
@@ -83,33 +94,37 @@ def run_rules_page():
                 st.markdown("---")
                 st.subheader("✏️ Modify an Existing Rule's Rate")
 
+                rules_dict = {r.name: r for r in rules}
                 rule_to_edit_name = st.selectbox(
-                    "Select a rule to update", [r.name for r in rules]
+                    "Select a rule to update", list(rules_dict.keys())
                 )
-                target_rule = db.execute(
-                    select(SalaryRule).where(SalaryRule.name == rule_to_edit_name)
-                ).scalar_one_or_none()
 
-                if target_rule:
-                    with st.form("update_rule_form"):
-                        st.info(
-                            f"Modifying global rate for: **{target_rule.name}** ({target_rule.category})"
-                        )
-                        updated_rate = st.number_input(
-                            "New Default Rate (decimal)",
-                            min_value=0.0,
-                            max_value=1.0,
-                            value=float(target_rule.rate),
-                            step=0.01,
-                        )
+                target_rule = rules_dict[rule_to_edit_name]
 
-                        if st.form_submit_button("Update Global Rate"):
-                            target_rule.rate = Decimal(str(updated_rate))
-                            db.commit()
-                            st.success(
-                                f"Global rate for '{target_rule.name}' updated to {updated_rate * 100:.1f}%!"
-                            )
-                            st.rerun()
+                with st.form("update_rule_form"):
+                    st.info(
+                        f"Modifying global rate for: **{target_rule.name}** "
+                        f"({target_rule.category})"
+                    )
+                    updated_rate = st.number_input(
+                        "New Default Rate (decimal)",
+                        min_value=0.0,
+                        max_value=1.0,
+                        value=float(target_rule.rate),
+                        step=0.01,
+                    )
+
+                    if st.form_submit_button("Update Global Rate"):
+                        update_salary_rule_rate(
+                            db=db,
+                            rule_name=rule_to_edit_name,
+                            new_rate=Decimal(str(updated_rate)),
+                        )
+                        st.success(
+                            f"Global rate for '{target_rule.name}' "
+                            f"updated to {updated_rate * 100:.1f}%!"
+                        )
+                        st.rerun()
 
     except Exception as e:
         st.error(f"Rules View Error: {e}")

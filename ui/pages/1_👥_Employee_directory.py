@@ -1,17 +1,21 @@
 import os
 import sys
+from decimal import Decimal
 import streamlit as st
 from sqlalchemy import select
-from decimal import Decimal
 
 sys.path.append(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 )
 
+from app.crud import (
+    create_employee,
+    delete_employee,
+    get_all_employees,
+    update_employee,
+)
 from app.database import SessionLocal
 from app.models import Employee
-from app.crud import create_employee, update_employee, delete_employee
-
 
 def run_crud_page():
     st.set_page_config(page_title="Employee Directory", layout="centered")
@@ -58,15 +62,15 @@ def run_crud_page():
         elif crud_action == "Update":
             st.subheader("Modify Employee Records")
 
-            all_emps = list(db.execute(select(Employee)).scalars().all())
+            all_emps = get_all_employees(db)
+
+            emp_dict = {emp.name: emp for emp in all_emps}
             emp_to_update_name = st.selectbox(
-                "Select Profile to Edit", [emp.name for emp in all_emps]
+                "Select Profile to Edit", list(emp_dict.keys())
             )
 
             if emp_to_update_name:
-                target_emp = db.execute(
-                    select(Employee).where(Employee.name == emp_to_update_name)
-                ).scalar_one_or_none()
+                target_emp = emp_dict[emp_to_update_name]
 
                 with st.form("update_form"):
                     updated_title = st.text_input(
@@ -96,7 +100,7 @@ def run_crud_page():
         elif crud_action == "Delete":
             st.subheader("Offboard/Remove Worker Records")
 
-            all_emps = list(db.execute(select(Employee)).scalars().all())
+            all_emps = get_all_employees(db)
             emp_to_delete_name = st.selectbox(
                 "Select Profile to Remove", [emp.name for emp in all_emps]
             )
@@ -118,7 +122,6 @@ def run_crud_page():
         st.error(f"Directory CRUD View Error: {e}")
     finally:
         db.close()
-
 
 if __name__ == "__main__":
     run_crud_page()

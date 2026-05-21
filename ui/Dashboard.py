@@ -1,13 +1,18 @@
-import streamlit as st
-import pandas as pd
 import os
 import sys
-from sqlalchemy import select
+
+import pandas as pd
+import streamlit as st
+
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from data.reset_data import reset_and_seed_database
+
+from app.crud import get_all_employees, get_all_clients, get_all_payment, \
+    get_all_payslip, get_recent_payment_history
+
 from app.database import SessionLocal
-from app.models import Employee, Client, PaymentHistory, Payslip
 
 st.set_page_config(page_title="ERP Dashboard", page_icon="📊", layout="wide")
 
@@ -16,11 +21,23 @@ st.markdown("---")
 
 db = SessionLocal()
 
+# uncomment for reset the data
+# st.markdown("---")
+# st.subheader("🛠️ Zone de Maintenance Administrateur")
+#
+# if st.button("🔴 Réinitialiser et Réinjecter les Données (Seed)", type="primary"):
+#     from data.reset_data import reset_and_seed_database
+#     try:
+#         reset_and_seed_database()
+#         st.success("🎯 La base de données a été purgée et recréée avec succès !")
+#     except Exception as ex:
+#         st.error(f"Erreur lors du reset : {ex}")
+
 try:
-    employees = list(db.execute(select(Employee)).scalars().all())
-    clients = list(db.execute(select(Client)).scalars().all())
-    payments = list(db.execute(select(PaymentHistory)).scalars().all())
-    payslips = list(db.execute(select(Payslip)).scalars().all())
+    employees = get_all_employees(db)
+    clients = get_all_clients(db)
+    payments = get_all_payment(db)
+    payslips = get_all_payslip(db)
 
     total_employees = len(employees)
 
@@ -86,22 +103,24 @@ try:
 
     with tab2:
         pay_recent = []
-        for p in payments[-5:]:
-            client = db.execute(
-                select(Client).where(Client.id == p.client_id)
-            ).scalar_one_or_none()
+        recent_records = get_recent_payment_history(db, limit=5)
+
+        for payment, client in recent_records:
             pay_recent.append(
                 {
                     "Company Name": (
                         client.company_name
                         if client
-                        else f"Unknown (ID: {p.client_id})"
+                        else f"Unknown (ID: {payment.client_id})"
                     ),
-                    "Amount From Client": f"${float(p.amount):,.2f}",
-                    "Invoice Status": p.status,
+                    "Amount From Client": f"${float(payment.amount):,.2f}",
+                    "Invoice Status": payment.status,
                 }
             )
         st.dataframe(pd.DataFrame(pay_recent), width="stretch")
+
+    st.markdown("---")
+    st.subheader("🛠️ Zone de Maintenance Administrateur")
 
 except Exception as e:
     st.error(f"Error loading dashboard: {e}")
