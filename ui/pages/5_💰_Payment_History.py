@@ -3,7 +3,6 @@ import sys
 from decimal import Decimal
 import pandas as pd
 import streamlit as st
-from sqlalchemy import select
 
 sys.path.append(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -15,7 +14,6 @@ from app.crud import (
     get_client_payment_history,
 )
 from app.database import SessionLocal
-from app.models import Client
 
 
 def run_payment_page():

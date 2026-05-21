@@ -1,14 +1,12 @@
 import os
 import sys
 from decimal import Decimal
-from sqlalchemy import select
 import streamlit as st
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.crud import create_payslip, get_all_employees, get_all_salary_rules
 from app.database import SessionLocal
-from app.models import Employee, Payslip, SalaryRule
 from app.utils.pdf_generator import generate_payslip_pdf
 
 st.set_page_config(page_title="Project Overview & Payroll Engine", layout="wide")

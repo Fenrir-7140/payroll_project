@@ -1,6 +1,4 @@
-import os
 import re
-import sys
 from datetime import datetime
 from decimal import Decimal
 from sqlalchemy import Row, delete, select
@@ -61,15 +59,6 @@ def delete_employee(db: Session, employee_name: str) -> bool:
         db.commit()
         return True
     return False
-
-
-def get_employee_payroll_history(db: Session, employee_id: int) -> list[Payslip]:
-    result = db.execute(
-        select(Payslip)
-        .where(Payslip.employee_id == employee_id)
-        .order_by(Payslip.date_generated.desc())
-    )
-    return list(result.scalars().all())
 
 
 def get_employee_by_name(db: Session, employee_name: str) -> Employee | None:
@@ -157,6 +146,14 @@ def get_recent_payment_history(
 ## PaySlip
 def get_all_payslip(db: Session) -> list[Payslip]:
     result = db.execute(select(Payslip))
+    return list(result.scalars().all())
+
+def get_employee_payroll_history(db: Session, employee_id: int) -> list[Payslip]:
+    result = db.execute(
+        select(Payslip)
+        .where(Payslip.employee_id == employee_id)
+        .order_by(Payslip.date_generated.desc())
+    )
     return list(result.scalars().all())
 
 
