@@ -1,14 +1,14 @@
 import os
 import sys
-import streamlit as st
 import pandas as pd
+import streamlit as st
 
 sys.path.append(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 )
 
-from app.database import SessionLocal
 from app.crud import create_client, get_all_clients
+from app.database import SessionLocal
 
 
 def run_client_page():
@@ -34,7 +34,8 @@ def run_client_page():
                         company_name=company if company else None,
                         email=email,
                     )
-                    st.success(f"Customer '{name}' successfully registered !")
+                    # Correction de l'espace avant le '!' pour l'anglais
+                    st.success(f"Customer '{name}' successfully registered!")
                     st.rerun()
                 else:
                     st.error("Name and email are required.")
@@ -48,7 +49,9 @@ def run_client_page():
             client_data = [
                 {
                     "Contact Name": c.name,
-                    "Company": c.company_name if c.company_name else "N/A (Individual)",
+                    "Company": (
+                        c.company_name if c.company_name else "N/A (Individual)"
+                    ),
                     "Email Address": c.email,
                 }
                 for c in clients

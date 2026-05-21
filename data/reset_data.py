@@ -1,12 +1,15 @@
-import os
 import sys
+import os
+
+sys.path.append(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
+
 from datetime import datetime, timedelta, timezone
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-from app.database import SessionLocal, engine
-from app.models import Base, Employee, SalaryRule, Client, PaymentHistory, Payslip
 from decimal import Decimal
+from app.database import SessionLocal, engine, Base
+from app.models import Employee, SalaryRule, Client, PaymentHistory, Payslip
+
 
 
 def reset_and_seed_database():

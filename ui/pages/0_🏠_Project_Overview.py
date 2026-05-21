@@ -1,13 +1,14 @@
-import streamlit as st
 import os
 import sys
-from sqlalchemy import select
 from decimal import Decimal
+from sqlalchemy import select
+import streamlit as st
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from app.crud import create_payslip, get_all_employees, get_all_salary_rules
 from app.database import SessionLocal
-from app.models import Employee, SalaryRule, Payslip
+from app.models import Employee, Payslip, SalaryRule
 from app.utils.pdf_generator import generate_payslip_pdf
 
 st.set_page_config(page_title="Project Overview & Payroll Engine", layout="wide")
@@ -18,8 +19,8 @@ st.markdown("---")
 db = SessionLocal()
 
 try:
-    employees = list(db.execute(select(Employee)).scalars().all())
-    rules = list(db.execute(select(SalaryRule)).scalars().all())
+    employees = get_all_employees(db)
+    rules = get_all_salary_rules(db)
 
     if not employees:
         st.warning(
@@ -76,7 +77,6 @@ try:
         st.markdown(" ")
 
         if st.button("💸 Compute Live Payslip & Save Transaction", type="primary"):
-
             base_salary = emp.base_salary
             total_allowances = Decimal("0.00")
             total_deductions = Decimal("0.00")
@@ -92,32 +92,37 @@ try:
             total_gross = base_salary + total_allowances
             total_net = total_gross - total_deductions
 
-            payslip = Payslip()
-            payslip.employee_id = emp.id
-            payslip.total_gross = total_gross
-            payslip.total_net = total_net
+            payslip = create_payslip(
+                db=db,
+                employee_id=emp.id,
+                total_gross=total_gross,
+                total_net=total_net,
+            )
 
-            db.add(payslip)
-            db.commit()
-            db.refresh(payslip)
+            st.session_state["last_payslip"] = payslip
+            st.session_state["last_deductions"] = total_deductions
+            st.session_state["computed_emp_id"] = emp.id
+
+        if (
+            "last_payslip" in st.session_state
+            and st.session_state["computed_emp_id"] == emp.id
+        ):
+            p = st.session_state["last_payslip"]
+            d = st.session_state["last_deductions"]
 
             st.info("### Calculation Breakdown Results")
             res_col1, res_col2, res_col3 = st.columns(3)
 
-            res_col1.metric(
-                "Calculated Gross Salary", f"${float(payslip.total_gross):,.2f}"
-            )
+            res_col1.metric("Calculated Gross Salary", f"${float(p.total_gross):,.2f}")
             res_col2.metric(
                 "Total Retained Deductions",
-                f"${float(total_deductions):,.2f}",
+                f"${float(d):,.2f}",
                 delta="-Taxes",
                 delta_color="inverse",
             )
-            res_col3.metric(
-                "Final Net Payout Amount", f"${float(payslip.total_net):,.2f}"
-            )
+            res_col3.metric("Final Net Payout Amount", f"${float(p.total_net):,.2f}")
 
-            raw_pdf_data = generate_payslip_pdf(employee=emp, payslip=payslip)
+            raw_pdf_data = generate_payslip_pdf(employee=emp, payslip=p)
             pdf_bytes = bytes(raw_pdf_data)
 
             st.download_button(

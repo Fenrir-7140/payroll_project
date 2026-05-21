@@ -1,16 +1,16 @@
 import os
 import sys
-import streamlit as st
-import pandas as pd
 from sqlalchemy import select
+import pandas as pd
+import streamlit as st
 
 sys.path.append(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 )
 
+from app.crud import get_all_employees, get_employee_payroll_history
 from app.database import SessionLocal
 from app.models import Employee
-from app.crud import get_employee_payroll_history
 
 
 def run_payroll_history():
@@ -23,37 +23,37 @@ def run_payroll_history():
     db = SessionLocal()
 
     try:
-        employees = list(db.execute(select(Employee)).scalars().all())
+        employees = get_all_employees(db)
         employee_options = {emp.name: emp.id for emp in employees}
 
         if not employee_options:
             st.warning("⚠️ No employees found in the system.")
-            return
-
-        selected_emp_name = st.selectbox(
-            "Select Employee to View History", list(employee_options.keys())
-        )
-        selected_emp_id = employee_options[selected_emp_name]
-
-        history_records = get_employee_payroll_history(db, selected_emp_id)
-
-        if not history_records:
-            st.info(f"ℹ️ No payslips have been generated for {selected_emp_name} yet.")
         else:
-            formatted_data = [
-                {
-                    "Date": record.date_generated.strftime("%d/%m/%Y"),
-                    "Gross Salary ($)": f"${float(record.total_gross):,.2f}",
-                    "Net Salary ($)": f"${float(record.total_net):,.2f}",
-                }
-                for record in history_records
-            ]
+            selected_emp_name = st.selectbox(
+                "Select Employee to View History", list(employee_options.keys())
+            )
+            selected_emp_id = employee_options[selected_emp_name]
 
-            df = pd.DataFrame(formatted_data)
+            history_records = get_employee_payroll_history(db, selected_emp_id)
 
-            st.subheader(f"Archived Statements for {selected_emp_name}")
+            if not history_records:
+                st.info(
+                    f"ℹ️ No payslips have been generated for {selected_emp_name} yet."
+                )
+            else:
+                formatted_data = [
+                    {
+                        "Date": record.date_generated.strftime("%d/%m/%Y"),
+                        "Gross Salary ($)": f"${float(record.total_gross):,.2f}",
+                        "Net Salary ($)": f"${float(record.total_net):,.2f}",
+                    }
+                    for record in history_records
+                ]
 
-            st.dataframe(df, width="stretch", hide_index=True)
+                df = pd.DataFrame(formatted_data)
+
+                st.subheader(f"Archived Statements for {selected_emp_name}")
+                st.dataframe(df, width="stretch", hide_index=True)
 
     except Exception as e:
         st.error(f"Payroll History View Error: {e}")
